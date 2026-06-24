@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+from typing import Annotated
+
+import httpx
+from fastmcp import FastMCP
+from pydantic import BaseModel
+
+from settings import settings
+
+PYLON_API_URL = "https://api.usepylon.com"
+
+
+class CreateIssueResponse(BaseModel):
+    id: str
+    number: int
+    title: str
+    state: str
+    link: str | None = None
+
+
+def register(mcp: FastMCP) -> None:
+    @mcp.tool()
+    async def create_issue(
+        account_id: Annotated[
+            str,
+            "Pylon account ID for the tenant. Get this from the get_pylon_account_id tool.",
+        ],
+        title: Annotated[str, "Title of the support ticket."],
+        body_html: Annotated[str, "HTML content of the ticket body."],
+        requester_email: Annotated[
+            str, "Email of the user creating the ticket."
+        ],
+        requester_name: Annotated[
+            str | None, "Name of the user creating the ticket."
+        ] = None,
+        priority: Annotated[
+            str | None,
+            "Ticket priority: 'urgent', 'high', 'medium', or 'low'.",
+        ] = None,
+        tags: Annotated[
+            list[str] | None, "Tags to apply to the ticket."
+        ] = None,
+        ticket_form_id: Annotated[
+            str | None,
+            "Ticket form ID to associate with the issue (e.g. bug, feature request).",
+        ] = None,
+    ) -> CreateIssueResponse:
+        """Create a support ticket in Pylon on behalf of a user."""
+        payload: dict = {
+            "account_id": account_id,
+            "title": title,
+            "body_html": body_html,
+            "requester_email": requester_email,
+            "destination_metadata": {"destination": "internal"},
+        }
+
+        if requester_name:
+            payload["requester_name"] = requester_name
+        if priority:
+            payload["priority"] = priority
+        if tags:
+            payload["tags"] = tags
+        if ticket_form_id:
+            payload["ticket_form_id"] = ticket_form_id
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{PYLON_API_URL}/issues",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {settings.pylon_api_key}",
+                },
+                json=payload,
+                timeout=30,
+            )
+            response.raise_for_status()
+            issue = response.json().get("data", {})
+            return CreateIssueResponse(
+                id=issue["id"],
+                number=issue["number"],
+                title=issue["title"],
+                state=issue["state"],
+                link=issue.get("link"),
+            )
