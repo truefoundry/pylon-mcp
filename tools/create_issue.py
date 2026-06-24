@@ -75,7 +75,7 @@ def register(mcp: FastMCP) -> None:
                 raise Exception(
                     f"Rate limit exceeded. Wait {retry_after} seconds before retrying."
                 )
-            if response.status_code != 200:
+            if not response.is_success:
                 error_body = (
                     response.json()
                     if "application/json" in response.headers.get("content-type", "")
