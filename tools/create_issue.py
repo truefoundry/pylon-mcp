@@ -39,10 +39,6 @@ def register(mcp: FastMCP) -> None:
         requester_email: Annotated[
             str, "Email of the user creating the ticket."
         ],
-        requester_name: Annotated[
-            str,
-            "Full name of the user creating the ticket. Required by Pylon alongside requester_email.",
-        ],
         priority: Annotated[
             Priority | None,
             "Ticket priority.",
@@ -57,7 +53,6 @@ def register(mcp: FastMCP) -> None:
             "title": title,
             "body_html": body_html,
             "requester_email": requester_email,
-            "requester_name": requester_name,
             "destination_metadata": {"destination": "internal"},
         }
         if priority:
