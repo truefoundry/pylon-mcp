@@ -39,20 +39,12 @@ def register(mcp: FastMCP) -> None:
         requester_email: Annotated[
             str, "Email of the user creating the ticket."
         ],
-        requester_name: Annotated[
-            str,
-            "Full name of the user creating the ticket. Required by Pylon alongside requester_email.",
-        ],
         priority: Annotated[
             Priority | None,
             "Ticket priority.",
         ] = None,
         tags: Annotated[
             list[str] | None, "Tags to apply to the ticket."
-        ] = None,
-        ticket_form_id: Annotated[
-            str | None,
-            "Ticket form ID to associate with the issue (e.g. bug, feature request).",
         ] = None,
     ) -> CreateIssueResponse:
         """Create a support ticket in Pylon on behalf of a user."""
@@ -61,15 +53,12 @@ def register(mcp: FastMCP) -> None:
             "title": title,
             "body_html": body_html,
             "requester_email": requester_email,
-            "requester_name": requester_name,
             "destination_metadata": {"destination": "internal"},
         }
         if priority:
             payload["priority"] = priority.value
         if tags:
             payload["tags"] = tags
-        if ticket_form_id:
-            payload["ticket_form_id"] = ticket_form_id
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -81,7 +70,20 @@ def register(mcp: FastMCP) -> None:
                 json=payload,
                 timeout=30,
             )
-            response.raise_for_status()
+            if response.status_code == 429:
+                retry_after = response.headers.get("X-Retry-After", "60")
+                raise Exception(
+                    f"Rate limit exceeded. Wait {retry_after} seconds before retrying."
+                )
+            if not response.is_success:
+                error_body = (
+                    response.json()
+                    if "application/json" in response.headers.get("content-type", "")
+                    else {}
+                )
+                errors = error_body.get("errors", [])
+                detail = "; ".join(errors) if errors else response.text
+                raise Exception(f"Pylon API error ({response.status_code}): {detail}")
             issue = response.json().get("data", {})
             return CreateIssueResponse(
                 id=issue["id"],
