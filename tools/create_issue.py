@@ -34,10 +34,6 @@ def register(mcp: FastMCP) -> None:
         requester_name: Annotated[
             str | None, "Name of the user creating the ticket."
         ] = None,
-        priority: Annotated[
-            str | None,
-            "Ticket priority: 'urgent', 'high', 'medium', or 'low'.",
-        ] = None,
         tags: Annotated[
             list[str] | None, "Tags to apply to the ticket."
         ] = None,
@@ -57,8 +53,6 @@ def register(mcp: FastMCP) -> None:
 
         if requester_name:
             payload["requester_name"] = requester_name
-        if priority:
-            payload["priority"] = priority
         if tags:
             payload["tags"] = tags
         if ticket_form_id:
