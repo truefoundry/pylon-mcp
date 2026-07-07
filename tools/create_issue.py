@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum
 from typing import Annotated
 
 import httpx
@@ -8,13 +7,6 @@ from fastmcp import FastMCP
 from pydantic import BaseModel
 
 from settings import settings
-
-
-class Priority(str, Enum):
-    URGENT = "urgent"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
 
 PYLON_API_URL = "https://api.usepylon.com"
 
@@ -39,10 +31,6 @@ def register(mcp: FastMCP) -> None:
         requester_email: Annotated[
             str, "Email of the user creating the ticket."
         ],
-        priority: Annotated[
-            Priority | None,
-            "Ticket priority.",
-        ] = None,
         tags: Annotated[
             list[str] | None, "Tags to apply to the ticket."
         ] = None,
@@ -55,8 +43,6 @@ def register(mcp: FastMCP) -> None:
             "requester_email": requester_email,
             "destination_metadata": {"destination": "internal"},
         }
-        if priority:
-            payload["priority"] = priority.value
         if tags:
             payload["tags"] = tags
 
