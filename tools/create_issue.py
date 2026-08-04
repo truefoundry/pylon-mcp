@@ -18,6 +18,9 @@ class Priority(str, Enum):
 
 PYLON_API_URL = "https://api.usepylon.com"
 
+# Must match an email app configured in Pylon, otherwise issue creation is rejected.
+PYLON_SENDER_EMAIL = "support@truefoundry.com"
+
 
 class CreateIssueResponse(BaseModel):
     id: str
@@ -47,13 +50,20 @@ def register(mcp: FastMCP) -> None:
             list[str] | None, "Tags to apply to the ticket."
         ] = None,
     ) -> CreateIssueResponse:
-        """Create a support ticket in Pylon on behalf of a user."""
+        """Create a support ticket in Pylon on behalf of a user.
+
+        The requester is emailed the ticket and can reply to it, so write
+        body_html as a message addressed to the support team, not a summary.
+        """
         payload: dict = {
             "account_id": account_id,
             "title": title,
             "body_html": body_html,
             "requester_email": requester_email,
-            "destination_metadata": {"destination": "internal"},
+            "destination_metadata": {
+                "destination": "email",
+                "email": PYLON_SENDER_EMAIL,
+            },
         }
         if priority:
             payload["priority"] = priority.value
