@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+import re
 from enum import Enum
 from typing import Annotated
 
@@ -20,6 +22,22 @@ PYLON_API_URL = "https://api.usepylon.com"
 
 # Must match an email app configured in Pylon, otherwise issue creation is rejected.
 PYLON_SENDER_EMAIL = "support@truefoundry.com"
+
+_ENTITY_TAG = re.compile(r"&lt;\s*/?\s*[a-zA-Z]")
+_REAL_TAG = re.compile(r"<\s*/?\s*[a-zA-Z]")
+
+
+def _decode_if_entity_encoded(body_html: str) -> str:
+    """Recover markup from bodies whose tags arrive entity-encoded.
+
+    Callers sometimes send `&lt;p&gt;` instead of `<p>`. Pylon stores that
+    faithfully and renders the tags as visible text, so decode it back. Only
+    applied when no real tags are present, to avoid mangling bodies that
+    legitimately mix markup with escaped literals.
+    """
+    if _REAL_TAG.search(body_html) or not _ENTITY_TAG.search(body_html):
+        return body_html
+    return html.unescape(body_html)
 
 
 class CreateIssueResponse(BaseModel):
@@ -58,7 +76,7 @@ def register(mcp: FastMCP) -> None:
         payload: dict = {
             "account_id": account_id,
             "title": title,
-            "body_html": body_html,
+            "body_html": _decode_if_entity_encoded(body_html),
             "requester_email": requester_email,
             "destination_metadata": {
                 "destination": "email",
